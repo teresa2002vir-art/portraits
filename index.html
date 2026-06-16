@@ -3955,10 +3955,10 @@ window.showModal = showModal;
 //   填了真图就用真图,没填则用程序生成的占位立绘
 // 立绘库已外接到图床(jsDelivr+GitHub)，按需懒加载，文件不再内嵌 base64。
 // 如需更换图床，只改 PORTRAIT_BASE 一行即可。
-window.PORTRAIT_BASE = './';
+window.PORTRAIT_BASE = 'https://cdn.jsdelivr.net/gh/teresa2002vir-art/portraits@main/';
 window.PORTRAIT_KEYS = (function(){
   var ks = [];
-  for (var n = 1; n <= 80; n++) ks.push('c' + (n<10?('0'+n):n));
+  for (var n = 1; n <= 300; n++) ks.push('c' + (n<10?('0'+n):n));
   ks.push('emperor'); ks.push('emperor_b'); ks.push('emperor_c');
   return ks;
 })();
@@ -3972,6 +3972,38 @@ window.PORTRAIT_LIB = (function(){
   });
   return lib;
 })();
+// ═══ 路线B：启动时从 GitHub 自动发现仓库里的全部立绘（文件名随便取，丢图即用） ═══
+// 排除三张皇帝图；其余 png/jpg 全部当妃嫔立绘装入池子。
+window.PORTRAIT_REPO = 'teresa2002vir-art/portraits';
+window.PORTRAIT_DISCOVERED = false;
+window.loadPortraitsFromGitHub = function(){
+  try {
+    var url = 'https://api.github.com/repos/' + window.PORTRAIT_REPO + '/contents/';
+    fetch(url).then(function(r){ return r.ok ? r.json() : null; }).then(function(list){
+      if (!list || !list.length) return;
+      var emperors = {'emperor.png':1,'emperor_b.png':1,'emperor_c.png':1};
+      var imgRe = /\.(png|jpg|jpeg|webp)$/i;
+      var pool = [];
+      list.forEach(function(item){
+        if (item.type !== 'file') return;
+        var fn = item.name;
+        if (!imgRe.test(fn)) return;
+        if (emperors[fn.toLowerCase()]) return;          // 跳过皇帝图
+        var key = fn.replace(imgRe, '');                  // 用文件名(去扩展名)作key
+        window.PORTRAIT_LIB[key] = window.PORTRAIT_BASE + fn;
+        if (!window.PORTRAIT_NAMES) window.PORTRAIT_NAMES = {};
+        window.PORTRAIT_NAMES[key] = '';                  // 不显示名字
+        pool.push(key);
+      });
+      if (pool.length) {
+        window.PORTRAIT_DISCOVERED = true;
+        window._discoveredPool = pool;
+        if (typeof renderAll === 'function') renderAll();
+      }
+    }).catch(function(){ /* 失败则用兜底，不影响游戏 */ });
+  } catch(e) {}
+};
+
 // 按角色特征归类到立绘档(决定AI妃嫔共用哪张)
 window.portraitTag = function(c) {
 if (!c) return 'mid_calm';
@@ -4069,7 +4101,8 @@ return genPlaceholderPortrait(key, (who==='emperor'||who==='taihou'||who==='play
 window.portraitImg = function(who, size) {
 const s = size || 120;
 const src = getPortrait(who);
-return `<img src="${src}" width="${s}" style="border-radius:10px;display:inline-block;box-shadow:0 2px 8px rgba(0,0,0,.15)" alt="立绘"/>`;
+const ph = window.PORTRAIT_PLACEHOLDER || '';
+return `<img src="${src}" width="${s}" onerror="this.onerror=null;this.src='${ph}'" style="border-radius:10px;display:inline-block;box-shadow:0 2px 8px rgba(0,0,0,.15)" alt="立绘"/>`;
 };
 // ═══ 主控换装 ═══
 window.PLAYER_PORTRAIT_OPTIONS = [
@@ -4082,26 +4115,32 @@ window.PLAYER_PORTRAIT_OPTIONS = [
 ];
 // 通用立绘池:所有真图(给妃嫔挑选用)。名称映射
 window.PORTRAIT_NAMES = {
-c01:'紫绡', c02:'朱缬', c03:'玄凤', c04:'蟾辉', c05:'青筠',
-c06:'赤凰', c07:'素雪', c08:'珞珠', c09:'桃笑', c10:'金翟',
-c11:'绯纱', c12:'戎装', c13:'紫宸', c14:'墨曜', c15:'雪鸢',
-c16:'研墨', c17:'胡旋', c18:'乌缨', c19:'胭绯', c20:'澄霜',
-c21:'素青', c22:'鹅黄', c23:'双髻', c24:'蓝缨', c25:'素蓝',
-c26:'桃酡', c27:'绯妆', c28:'银素', c29:'藕荷', c30:'墨绿',
-c31:'紫鸢', c32:'赤冠', c33:'玄佩', c34:'粉妍', c35:'紫宸',
-c36:'黛紫', c37:'霜蓝', c38:'玄纱', c39:'绯珠', c40:'缟素',
-c41:'凤红', c42:'银蓝', c43:'凤袍', c44:'牡丹', c45:'银青',
-c46:'团扇', c47:'鹅茶', c48:'兰香', c49:'莲粉', c50:'蛇绿',
-c51:'嗅花', c52:'泪白', c53:'冰青', c54:'雪蓝', c55:'泣雪',
-c56:'桃笑2', c57:'垂泪', c58:'花篮', c59:'嗅桃', c60:'红鞭',
-c61:'橙剑', c62:'红云', c63:'孔雀', c64:'黑凤', c65:'金凰',
-c66:'玄羽', c67:'橙翠', c68:'橙鹤', c69:'粉铃', c70:'金冕',
-c71:'金凤', c72:'红垂', c73:'牡艳', c74:'蝶粉', c75:'玉白',
-c76:'朱痕', c77:'黑华', c78:'褐羽', c79:'蓝遮', c80:'黑银',
+c01:'', c02:'', c03:'', c04:'', c05:'',
+c06:'', c07:'', c08:'', c09:'', c10:'',
+c11:'', c12:'', c13:'', c14:'', c15:'',
+c16:'', c17:'', c18:'', c19:'', c20:'',
+c21:'', c22:'', c23:'', c24:'', c25:'',
+c26:'', c27:'', c28:'', c29:'', c30:'',
+c31:'', c32:'', c33:'', c34:'', c35:'',
+c36:'', c37:'', c38:'', c39:'', c40:'',
+c41:'', c42:'', c43:'', c44:'', c45:'',
+c46:'', c47:'', c48:'', c49:'', c50:'',
+c51:'', c52:'', c53:'', c54:'', c55:'',
+c56:'', c57:'', c58:'', c59:'', c60:'',
+c61:'', c62:'', c63:'', c64:'', c65:'',
+c66:'', c67:'', c68:'', c69:'', c70:'',
+c71:'', c72:'', c73:'', c74:'', c75:'',
+c76:'', c77:'', c78:'', c79:'', c80:'',
 };
 window.getPortraitPool = function() {
+// 优先：GitHub 自动发现的真实立绘（丢图即用，文件名随意）
+if (window.PORTRAIT_DISCOVERED && window._discoveredPool && window._discoveredPool.length) {
+  return window._discoveredPool.slice();
+}
+const names = window.PORTRAIT_NAMES || {};
+const named = Object.keys(names).filter(k => /^c\d/.test(k));
+if (named.length) return named;
 const lib = window.PORTRAIT_LIB || {};
-// 排除固定角色(emperor/taihou)和主控换装专属(p开头),其余作妃嫔立绘
 return Object.keys(lib).filter(k => !/^emperor/.test(k) && k!=='taihou' && !/^p\d/.test(k));
 };
 // 妃嫔换立绘界面
@@ -4122,7 +4161,7 @@ pool.forEach(k => {
 const sel = (c._portrait||'') === k;
 const nm = (window.PORTRAIT_NAMES&&window.PORTRAIT_NAMES[k]) || '';
 html += `<div onclick="pickConcubinePortrait('${k}')" style="cursor:pointer;text-align:center;border:2px solid ${sel?'var(--gold)':'transparent'};border-radius:10px;padding:4px;background:${sel?'rgba(200,151,63,.12)':'transparent'}">`;
-html += `<img src="${lib[k]||''}" width="88" style="border-radius:8px;display:block;margin:0 auto"/>`;
+html += `<img src="${lib[k]||''}" width="88" onerror="this.onerror=null;this.src='${window.PORTRAIT_PLACEHOLDER||''}'" style="border-radius:8px;display:block;margin:0 auto"/>`;
 html += `<div style="font-size:10px;margin-top:3px;color:${sel?'var(--gold)':'#999'}">${nm}${sel?' ✓':''}</div>`;
 html += '</div>';
 });
@@ -4174,26 +4213,13 @@ if (_pp) {
 }
 };
 window.showPortraitPicker = function() {
-const lib = window.PORTRAIT_LIB || {};
+const pool = (typeof getPortraitPool==='function') ? getPortraitPool() : [];
+if (!pool.length) return;
 const cur = state._playerPortrait || 'c20';
-const names = window.PORTRAIT_NAMES || {};
-// 全部可用立绘（与妃嫔同一池）
-const keys = (typeof getPortraitPool==='function') ? getPortraitPool() : Object.keys(lib).filter(k=>/^c\d/.test(k));
-let html = '<div style="padding:18px;max-width:380px">';
-html += '<div style="font-size:15px;font-weight:bold;color:var(--gold);text-align:center;margin-bottom:4px">更 换 妆 容</div>';
-html += '<div style="font-size:11px;color:#999;text-align:center;margin-bottom:14px">为自己择一身行头</div>';
-html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-height:60vh;overflow-y:auto;padding:2px">';
-keys.forEach(key => {
-const sel = key === cur;
-html += `<div onclick="pickPlayerPortrait('${key}')" style="cursor:pointer;text-align:center;border:2px solid ${sel?'var(--gold)':'transparent'};border-radius:10px;padding:4px;background:${sel?'rgba(200,151,63,.12)':'transparent'}">`;
-html += `<img src="${lib[key]||''}" width="90" style="border-radius:8px;display:block;margin:0 auto"/>`;
-html += `<div style="font-size:11px;margin-top:4px;color:${sel?'var(--gold)':'#888'};font-weight:${sel?'bold':'normal'}">${names[key]||''}${sel?' ✓':''}</div>`;
-html += '</div>';
-});
-html += '</div>';
-html += '<button onclick="closePortraitPicker()" style="width:100%;padding:10px;margin-top:14px;background:#eee;border:none;border-radius:8px;cursor:pointer">完成</button>';
-html += '</div>';
-showModal2(html, true);
+let pick;
+do { pick = pool[Math.floor(Math.random()*pool.length)]; } while (pool.length>1 && pick===cur);
+state._playerPortrait = pick;
+if (typeof renderAll === 'function') renderAll();
 };
 window.closePortraitPicker = function() {
 closeModal2(true);
@@ -7069,6 +7095,7 @@ window.genOneConcubine = genOneConcubine;
 document.addEventListener('DOMContentLoaded', () => {
 const archBtn = document.getElementById('open-my-archive');
 if (archBtn) archBtn.onclick = showMyArchive;
+if (typeof loadPortraitsFromGitHub === 'function') loadPortraitsFromGitHub();
 });
 function runAllowance() {
 const allowance = RANK_ALLOWANCE[state.rank] || 10;
